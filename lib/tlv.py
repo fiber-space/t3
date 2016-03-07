@@ -33,7 +33,7 @@ def value_size(tlv, data):
         return int(tlv.Len)
 
 def update_len(v):
-    if v in (None, T3Number.NULL):
+    if v is None or v is T3Number.NULL:
         return 0x00
     k = Hex(len(Hex(v)))
     if k<0x80:
@@ -205,64 +205,40 @@ def test_tag():
     assert isinstance(tlv.Value, T3List)
     assert tlv.find_tag("80").Value == 0x00
 
+def test_length():    
+    tlv = Tlv << "80 00"
+    assert tlv.Len == "00"
+    tlv = Tlv(Tag = 0x80, Value = T3Number.NULL)
+    assert tlv.Len == "00"
+
+    tlv = Tlv(Tag = 0x80, Value = None)
+    assert tlv.Len == "00"
+
+    tlv = Tlv << "80 7F "+ 0x7F*"00"
+    assert tlv.Len == "7F"
+    tlv = Tlv(Tag = 0x80, Value = 0x7F*"00")
+    assert tlv.Len == "7F"
+
+    tlv = Tlv << "80 81 80 "+ 0x80*"00"
+    assert tlv.Len == "81 80"
+    tlv = Tlv(Tag = 0x80, Value = 0x80*"00")
+    assert tlv.Len == "81 80"
+
+    tlv = Tlv << "80 82 01 20 "+ 0x120*"00"
+    assert tlv.Len == "82 01 20"
+    tlv = Tlv(Tag = 0x80, Value = 0x120*"00")
+    assert tlv.Len == "82 01 20"
+
+def test_tlv_concatenation():    
+    T = Tlv(Tag = 0x82, Value = '10')  // Tlv(Tag = 0x83, Value = '92') // Tlv(Tag = 0xC0, Value = '89')
+    assert Hex(T) == "82 01 10 83 01 92 C0 01 89"
+    assert Tlv(Tag = 0x62, Value = T).Value == T   
+    c = Tlv(Tag = 0x62, Value = T)
+    c.Value.pop()
+    print Hex(c) == "62 06 82 01 10 83 01 92"
+
 
 if __name__ == '__main__':
     test_tag()
-    '''
-    # A = Tlv(Tag = 0x89, Value = 0x72872872)
-    # print A
-
-    data = Hex("E8 82 01 0A E9 1D C0 01 05 84 02 02 02 83 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 EA 81 BE 85 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 57 F1 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 91 03 03 03 03 99 07 07 07 07 07 07 07 07 C7 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28 28")
-    tlv  = Tlv << data
-    print tlv
-
-
-    dol = xDOL << "9F0A 02 9F27 80"
-    print dol
-    print Hex(Tlv(Tag = 0x62,
-        Value = Tlv(Tag = 0x82, Value = '10')  //
-                Tlv(Tag = 0x83, Value = '92')  //
-                Tlv(Tag = 0xC0, Value = '89')
-        ))
-
-    tlv = Tlv(Tag = 0x00, Value = None)
-    print tlv
-    assert tlv.Len == 0x00, "Tlv.Len = %s. Expected = 00"%tlv.Len
-
-    T_61 = T3Set()
-    T_61.add(0x4F, Tlv_4F = Tlv(Tag = 0x4F, Value = "FF"))
-    T_61.add(0x50, Tlv_50 = Tlv(Tag = 0x50))
-    T_61.add(0x87, Tlv_87 = Tlv(Tag = 0x87))
-    T_61.add(0x9F2A, Tlv_9F2A = Tlv(Tag = 0x9F2A))
-
-    T_BF0C = T3Set()
-    T_BF0C.add(0x61, Tlv_61 = Tlv(Tag = 0x61, Value = T_61))
-
-    T_A5 = T3Set()
-    T_A5.add(0x88, Tlv_88 = Tlv(Tag = 0x88))
-    T_A5.add(0x5F2D, Tlv_5F2D = Tlv(Tag = 0x5F2D))
-    T_A5.add(0xBF0C, Tlv_BF0C = Tlv(Tag = 0xBF0C, Value = T_BF0C))
-
-    T_6F = T3Set()
-    T_6F.add(0x84, Value = Tlv(Tag = 0x84))
-    T_6F.add(0xA5, Value = Tlv(Tag = 0xA5, Value = T_A5))
-
-    Tlv_Pse = T3Set()
-    Tlv_Pse.add(0x6F, Value = Tlv(Tag = 0x6F, Value = T_6F))
-    Tlv_Ppse = T3Set()
-    Tlv_Ppse.add(0x6F, Value = Tlv(Tag = 0x6F, Value = T_6F))
-
-    print Tlv_Ppse << "6F 37 84 0E 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 A5 25 BF 0C 22 61 20 4F 07 A0 00 00 01 11 01 01 50 0E 50 6F 73 74 46 69 6E 61 6E 63 65 20 43 4C 87 01 01 9F 2A 01 82"
-
-    print TlvDict(TlvList << Hex.join(Tlv(Tag = 0x4F, Value = "FF") // Tlv(Tag = 0x4E, Value = "FF")))
-    
-
-    print BERTlv << "C0 06 80 01 00 81 01 01"
-    print BERTlv << "80 02 00 00"
-    print BERTlv << "5F 01 02 00 00"
-    print BERTlv << "7F 05 03 80 01 00"
-    btlv = BERTlv << "30 08 80 01 00 E1 03 95 01 00"
-    print "-"*100
-    print btlv
-    print btlv.find_tag("95")
-    '''
+    test_length()
+    test_tlv_concatenation()

@@ -22,6 +22,7 @@ __all__ = [
 import sys
 import abc
 import functools
+import pprint
 from collections import Iterable, defaultdict
 from copy import copy
 
@@ -128,7 +129,7 @@ class T3Field(object):
 
     def get_value(self):
         global _binding_stack
-        if self.value not in (None, T3Number.NULL):
+        if self.value is not None and self.value is not T3Number.NULL:
             return self.value
         if self.value_binding:
             self.value_binding.obj = self.table
@@ -225,7 +226,7 @@ class T3Table(object):
     def add(self, pattern = 0, **kwds):
         field = self._new_field(pattern, kwds)
         self._fields.append(field)
-        self._fieldnames[field.name]+=1        
+        self._fieldnames[field.name]+=1
         if isinstance(field.value, T3Table):
             field.value._parent = self
         field.table = self
@@ -341,7 +342,7 @@ class T3Table(object):
     def _set_value_and_binding(self, field, v):
         if isinstance(v, T3Binding):
             field.value_binding = v
-        elif v is None or isinstance(v, T3Table):
+        elif v is None or isinstance(v, (T3List, T3Table)):
             field.value = v
         elif isinstance(v, T3Field):
             if field.name != v.name:
@@ -412,7 +413,7 @@ class T3Table(object):
         field = self.__getitem__(name)
         if len(field) == 1:
             if isinstance(value, T3List):
-                value = value.get_value()
+                self._set_value_and_binding(field, value)
             elif isinstance(value, (list, tuple)):
                 if len(value) == 1:
                     self._set_value_and_binding(field, value[0])
@@ -468,7 +469,7 @@ class T3Table(object):
                 S.append(indent*" "+name+": " + str(value))
         return S
 
-    def __repr__(self):        
+    def __repr__(self):
         name = ""
         S = []
         # TODO: this clause never used. Fix it or remove it.
@@ -627,7 +628,7 @@ class T3List(list):
         m = T3Match(T3Number.NULL, data)
         lst = T3List()
         R = m.rest
-        for table in self:            
+        for table in self:
             m = table.match(R)
             if m.fail:
                 return m
@@ -840,7 +841,7 @@ def _build_tlv():
 
     return Tlv
 
-def test_tlv():    
+def test_tlv():
     print("call: test_tlv()")
     Tlv = _build_tlv()
     Tlv << "A7 02 03 05 06"
